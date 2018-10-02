@@ -1,57 +1,128 @@
 #include "FastLED.h"
 
-#define NUM_LEDS 18
-#define DATA_PIN 9
-CRGB leds[NUM_LEDS];
+enum AnimationMode {
+	AnimationModeIncrease,
+	AnimationModeDecrease
+};
 
-int currentLed = NUM_LEDS;
+class LedStripe {
+	
+public:
+	int ledCount;
+	int brightness;
+	byte dataPin;
+	byte vccPin;
+	
+	CRGB* leds;
+	
+	PlantCircuit::PlantCircuit(int ledCount, byte dataPin, byte vccPin) {
+		this->ledCount = ledCount;
+		this->dataPin = dataPin;
+		this->vccPin = vccPin;
+		this->leds = new CRGB[ledCount];
+		this->brightness = brightness;
+		
+		FastLED.addLeds<NEOPIXEL, DATA_PIN>(this->leds, this->ledCount);
+		FastLED.setBrightness(this->brightness);
+		
+		pinMode(vccPin, OUTPUT);
+		pinMode(dataPin, OUTPUT);
+	}
+	PlantCircuit::~PlantCircuit() {};
+	
+	void black() {
+		for (int i = 0; i < this->ledCount; i++) { this->leds[i] = CRGB::Black; }
+		FastLED.show();
+	}
+	
+	void white() {
+		for (int i = 0; i < this->ledCount; i++) { this->leds[i] = CRGB::White; }
+		FastLED.show();
+	}
+} // class LedStripe
+
+
+class ClosetStripe : public LedStripe {
+
+public:
+	byte reetDataPin;
+	byte reetVccPin;
+	int currentLed;
+	AnimationMode animationMode;
+	
+	void initSwitch(byte reetDataPin, byte reetVccPin, AnimationMode mode) {
+		pinMode(reetDataPin, INPUT);
+		pinMode(reetVccPin, OUTPUT);
+		
+		this->animationMode = mode;
+		switch (animationMode) {
+			case AnimationModeIncrease:
+				this->currentLed = 0;
+				break;
+			case AnimationModeDecrease:
+				this->currentLed = ledCount - 1;
+				break;
+		}
+	}
+	
+	bool doorOpen() {
+		digitalWrite(reetVccPin, HIGH);
+		bool open = digitalRead(reetDataPin);
+		digitalWrite(reetVccPin, LOW);
+		return open;
+	}
+	
+	void loop() {
+		if (doorOpen()) nextAnimationOn();
+		else nextAnimationOff();
+	}
+	
+	void nextAnimationOn() {
+		leds[currentLed] = CRGB::White;
+		handleCurrentLed(true);
+	}
+	
+	void nextAnimationOff() {
+		leds[currentLed] = CRGB::Black;
+		handleCurrentLed(false);
+	}
+	
+	bool inAnimation() {
+		return ((currentLed >= 0) || (currentLed <= (ledCount - 1)));
+	}
+	
+	void handleCurrentLed(bool animationOn) {
+		switch (animationMode) {
+			case AnimationModeIncrease:
+				if (animationOn) {	if (currentLed <= (ledCount - 1)) currentLed++; }
+				else { if (currentLed >= 0) currentLed--; }
+				break;
+			case AnimationModeDecrease:
+				if (animationOn) {	if (currentLed >= 0) currentLed--; }
+				else { if (currentLed <= (ledCount - 1)) currentLed++; }
+				break;
+		}
+	}
+	
+	// TODO: auto switchOff after interval
+
+} // class ClosetStripe
+
+
+
+ClosetStripe* rightDoor;
 
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(115200);
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
-  FastLED.setBrightness(96);
-  pinMode(11, OUTPUT);
-  pinMode(7, OUTPUT);
-  pinMode(5, INPUT);
-  
-  for (int i = 0; i < NUM_LEDS; i++) { leds[i] = CRGB::Black; }
-  FastLED.show();
+	Serial.begin(115200);
+
+	rightDoor = new ClosetStripe(18, PIN_9, PIN_11, 96);
+	rightDoor->initSwitch(PIN_5, PIN_7, AnimationModeDecrease);
+	rightDoor->black();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  digitalWrite(7, HIGH);
-  // delay(100);
-  if (digitalRead(5)) {
-    switchOff();
-    Serial.println("High!");
-  } else {
-    switchOn();
-    Serial.println("Low");
-  }
-  digitalWrite(7, LOW);
-  
-  if (currentLed > -1) {
-    delay(20);
-  }
-  else {
-    delay(1000);
-  }
-  Serial.println(currentLed);
+	rightDoor->loop();
+	
+	if (rightDoor->inAnimation()) delay(20);
+	else delay(1000);
 }
-
-bool switchOn() {
-  leds[currentLed] = CRGB::White;
-  FastLED.show();
-  if (currentLed < NUM_LEDS) digitalWrite(11, HIGH);
-  if (currentLed > -1) { currentLed--; return true; }
-}
-
-bool switchOff() {
-  leds[currentLed] = CRGB::Black;
-  FastLED.show();
-  if (currentLed == NUM_LEDS) digitalWrite(11, LOW);
-  if (currentLed < NUM_LEDS) { currentLed++; return true; }
-}
-
