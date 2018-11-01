@@ -1,3 +1,3 @@
 # blackcherry
 
-The project does control my closet light.
+The project does control my wardrobe light.
