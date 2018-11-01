@@ -6,11 +6,11 @@ public:
   int ledCount;
   byte vccPin;
 
-  CRGB* leds;
+  CRGB * leds;
   
-  LedStripe::LedStripe(CRGB& leds, byte vccPin) {
-    this->leds = &leds;
-    this->ledCount = sizeof(this->leds)/sizeof(CRGB);
+  LedStripe::LedStripe(CRGB * leds, int ledCount, byte vccPin) {
+    this->leds = leds;
+    this->ledCount = ledCount;
     this->vccPin = vccPin;
     
     pinMode(vccPin, OUTPUT);

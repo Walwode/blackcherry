@@ -14,13 +14,17 @@ public:
   int currentLed;
   AnimationMode animationMode;
   
-  ClosetDoor::ClosetDoor(CRGB& leds, byte vccPin, byte reetDataPin, byte reetVccPin, AnimationMode mode) : LedStripe(leds, vccPin) {
+  ClosetDoor::ClosetDoor(CRGB * leds, int ledCount, byte vccPinLed, byte reetDataPin, byte reetVccPin, AnimationMode mode) : LedStripe(leds, ledCount, vccPinLed) {
     
-    pinMode(reetDataPin, INPUT);
-    pinMode(reetVccPin, OUTPUT);
+    this->reetVccPin = reetVccPin;
+    this->reetDataPin = reetDataPin;
+    this->animationMode = mode;
+    
+    pinMode(this->reetDataPin, INPUT);
+    pinMode(this->reetVccPin, OUTPUT);
     
     this->animationMode = mode;
-    switch (animationMode) {
+    switch (this->animationMode) {
       case AnimationModeIncrease:
         this->currentLed = 0;
         break;
@@ -33,7 +37,7 @@ public:
   
   bool doorOpen() {
     digitalWrite(reetVccPin, HIGH);
-    bool open = digitalRead(reetDataPin);
+    bool open = !digitalRead(reetDataPin);
     digitalWrite(reetVccPin, LOW);
     return open;
   }
@@ -44,30 +48,35 @@ public:
   }
   
   void nextAnimationOn() {
+    Serial.println("Animation on");
     leds[currentLed] = CRGB::White;
-    handleCurrentLed(true);
+    switch (animationMode) {
+      case AnimationModeIncrease:
+        if (currentLed <= (ledCount - 1)) currentLed++;
+        break;
+      case AnimationModeDecrease:
+        if (currentLed >= 0) currentLed--;
+        break;
+    }
   }
   
   void nextAnimationOff() {
+    Serial.println("Animation off");
     leds[currentLed] = CRGB::Black;
-    handleCurrentLed(false);
+    switch (animationMode) {
+      case AnimationModeIncrease:
+        if (currentLed >= 0) currentLed--;
+        break;
+      case AnimationModeDecrease:
+        if (currentLed <= (ledCount - 1)) currentLed++;
+        break;
+    }
   }
   
   bool inAnimation() {
-    return ((currentLed >= 0) || (currentLed <= (ledCount - 1)));
-  }
-  
-  void handleCurrentLed(bool animationOn) {
-    switch (animationMode) {
-      case AnimationModeIncrease:
-        if (animationOn) {  if (currentLed <= (ledCount - 1)) currentLed++; }
-        else { if (currentLed >= 0) currentLed--; }
-        break;
-      case AnimationModeDecrease:
-        if (animationOn) {  if (currentLed >= 0) currentLed--; }
-        else { if (currentLed <= (ledCount - 1)) currentLed++; }
-        break;
-    }
+    Serial.println(currentLed);
+    // return ((currentLed >= 0) && (currentLed <= (ledCount - 1)));
+    return true;
   }
   
   // TODO: auto switchOff after interval
